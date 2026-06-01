@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  # ============ Backend API ============
+  backend:
+    build: ./backend
+    container_name: smart_route_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8000
+    networks:
+      - smart_route_net
+    restart: unless-stopped
+
+  # ============ Edge AI Detector ============
+  edge-ai:
+    build: ./edge-ai
+    container_name: smart_route_edge_ai
+    depends_on:
+      - backend
+    volumes:
+      - ./edge-ai:/app
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - INTERSECTION_ID=intersection_1
+      - HEADLESS=true
+      - VIDEO_SOURCE=/app/sample_trafficcopy.mp4
+    networks:
+      - smart_route_net
+    restart: unless-stopped
+    # NOTE: For webcam, uncomment below (Linux only)
+    # devices:
+    #   - /dev/video0:/dev/video0
+
+    # ============ Dashboard ============
+  dashboard:
+    build: ./dashboard
+    container_name: smart_route_dashboard
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - smart_route_net
+    restart: unless-stopped
+
+networks:
+  smart_route_net:
+    driver: bridge

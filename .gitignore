@@ -1,0 +1,72 @@
+# ============ Python ============
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# ============ Node / React ============
+node_modules/
+dashboard/dist/
+dashboard/build/
+.npm
+.yarn
+
+# ============ Environment ============
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# ============ ML Models (large files) ============
+*.pt
+*.h5
+*.pkl
+*.weights
+*.onnx
+yolov8*.pt
+
+# ============ Data ============
+*.mp4
+*.avi
+*.mov
+sample_data/
+data/raw/
+data/processed/
+
+# ============ IDE / Editor ============
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ============ Logs ============
+*.log
+logs/
+*.out
+
+# ============ Docker ============
+.dockerignore
+
+# ============ Blockchain ============
+blockchain/wallet/
+blockchain/network/crypto-config/
+blockchain/network/channel-artifacts/
+
+# ============ SUMO ============
+simulation/sumo_files/output/
+
+# ============ OS ============
+.DS_Store
+Thumbs.db
