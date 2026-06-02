@@ -12,7 +12,7 @@ from ultralytics import YOLO
 from collections import defaultdict
 
 # ============ CONFIG ============
-BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 INTERSECTION_ID = os.getenv("INTERSECTION_ID", "intersection_1")
 SEND_INTERVAL = int(os.getenv("SEND_INTERVAL", 2))
 
@@ -20,7 +20,7 @@ HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"
 
 VIDEO_SOURCE = sys.argv[1] if len(sys.argv) > 1 else os.getenv(
     "VIDEO_SOURCE",
-    "/app/sample_trafficcopy.mp4"
+    "./sample_trafficcopy.mp4"
 )
 # ================================
 
