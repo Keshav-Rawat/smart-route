@@ -8,6 +8,7 @@ SMART_ROUTE - Advanced Edge AI Vehicle Detector
 
 import cv2
 import time
+import subprocess
 import json
 import os
 import requests
@@ -181,27 +182,48 @@ def draw_stats(frame, summary):
 
 
 def send_to_backend(summary):
-    """Send detailed data to backend"""
+    """Send detailed lane data to backend"""
     try:
-        url = f"{BACKEND_URL}/traffic/{INTERSECTION_ID}/update"
-        params = {"vehicle_count": summary["total_vehicles_now"]}
-        response = requests.post(url, params=params, timeout=2)
+        url = f"{BACKEND_URL}/traffic/{INTERSECTION_ID}/detailed"
+        response = requests.post(url, json=summary, timeout=2)
         
         if response.status_code == 200:
             print(f"✅ Backend OK | Now: {summary['total_vehicles_now']} | "
                   f"Unique: {summary['total_unique_seen']} | "
                   f"Lanes: {[(k, v['current']) for k, v in summary['lanes'].items()]}")
         else:
-            print(f"⚠️  Status {response.status_code}")
+            # Fallback to simple endpoint
+            fallback_url = f"{BACKEND_URL}/traffic/{INTERSECTION_ID}/update"
+            requests.post(fallback_url, params={"vehicle_count": summary["total_vehicles_now"]}, timeout=2)
+            print(f"✅ Sent (simple) | Now: {summary['total_vehicles_now']}")
     except requests.exceptions.ConnectionError:
         print("❌ Backend not running!")
     except Exception as e:
         print(f"❌ Error: {e}")
 
 
+def get_youtube_stream_url(youtube_url):
+    """Uses yt-dlp to extract the direct raw stream URL from a YouTube link"""
+    print(f"⏳ Extracting live stream URL from {youtube_url}...")
+    try:
+        cmd = ["yt-dlp", "-f", "best[height<=720]", "-g", youtube_url]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return result.stdout.strip().split('\n')[0]
+    except Exception as e:
+        print(f"❌ Failed to extract stream: {e}")
+        return None
+
+
 def detect_vehicles(video_source):
     """Main detection loop with tracking"""
-    cap = cv2.VideoCapture(video_source)
+    if "youtube.com" in video_source or "youtu.be" in video_source:
+        actual_source = get_youtube_stream_url(video_source)
+        if not actual_source:
+            return
+    else:
+        actual_source = video_source
+
+    cap = cv2.VideoCapture(actual_source)
     
     if not cap.isOpened():
         print(f"❌ Cannot open: {video_source}")

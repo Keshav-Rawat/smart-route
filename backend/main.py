@@ -149,3 +149,38 @@ if __name__ == "__main__":
     # pyrefly: ignore [missing-import]
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+    # Add this near the other endpoints in backend/main.py
+
+@app.post("/traffic/{intersection_id}/detailed")
+def update_detailed(intersection_id: str, data: dict):
+    """Receive detailed lane-wise data from advanced detector"""
+    timestamp = datetime.now().isoformat()
+    
+    if intersection_id not in traffic_data:
+        traffic_data[intersection_id] = {
+            "intersection_id": intersection_id,
+            "history": []
+        }
+    
+    total = data.get("total_vehicles_now", 0)
+    signal = determine_signal_state(total)
+    
+    traffic_data[intersection_id].update({
+        "vehicle_count": total,
+        "unique_total": data.get("total_unique_seen", 0),
+        "lanes": data.get("lanes", {}),
+        "signal_state": signal,
+        "last_updated": timestamp
+    })
+    
+    history = traffic_data[intersection_id].get("history", [])
+    history.append({
+        "timestamp": timestamp,
+        "count": total,
+        "signal": signal,
+        "lanes": data.get("lanes", {})
+    })
+    traffic_data[intersection_id]["history"] = history[-50:]
+    
+    return traffic_data[intersection_id]

@@ -1,4 +1,4 @@
-ultralytics==8.1.0
+ultralytics>=8.3.0
 opencv-python==4.8.1.78
 paho-mqtt==1.6.1
 numpy==1.26.0
