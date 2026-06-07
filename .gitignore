@@ -70,3 +70,6 @@ simulation/sumo_files/output/
 # ============ OS ============
 .DS_Store
 Thumbs.db
+simulation/emissions.xml
+simulation/tripinfo.xml
+simulation/summary.xml
