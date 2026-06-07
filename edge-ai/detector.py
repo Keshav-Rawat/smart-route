@@ -22,7 +22,7 @@ from shapely.geometry import Point, Polygon
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 INTERSECTION_ID = os.getenv("INTERSECTION_ID", "intersection_1")
 SEND_INTERVAL = int(os.getenv("SEND_INTERVAL", 2))
-VIDEO_SOURCE = os.getenv("VIDEO_SOURCE", "sample_traffic.mp4")
+VIDEO_SOURCE = os.getenv("VIDEO_SOURCE", "https://www.youtube.com/watch?v=1EiC9bvVGnk")
 
 MODEL_NAME = "yolov8m.pt"   # m = medium (better accuracy)
 CONFIDENCE_THRESHOLD = 0.4

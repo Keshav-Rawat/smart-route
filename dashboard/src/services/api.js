@@ -42,3 +42,17 @@ export const updateTraffic = async (intersectionId, count) => {
 };
 
 export default api;
+// Add this function to api.js
+
+// Get cumulative lane stats
+export const getLaneSummary = (data) => {
+    if (!data?.lanes) return [];
+
+    return Object.entries(data.lanes).map(([name, info]) => ({
+        name: name.toUpperCase(),
+        current: info.current || 0,
+        cumulative: info.cumulative || 0,
+        direction: info.direction || 'unknown',
+        breakdown: info.breakdown || {},
+    }));
+};

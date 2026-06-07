@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <input>
+        <net-file value="intersection.net.xml"/>
+        <route-files value="intersection.rou.xml"/>
+    </input>
+    
+    <time>
+        <begin value="0"/>
+        <end value="3600"/>
+        <step-length value="1"/>
+    </time>
+    
+    <output>
+        <tripinfo-output value="tripinfo.xml"/>
+        <emission-output value="emissions.xml"/>
+    </output>
+    
+    <gui_only>
+        <gui-settings-file value="gui-settings.xml"/>
+    </gui_only>
+</configuration>

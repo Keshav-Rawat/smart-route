@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <!-- Vehicle types -->
+    <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5" maxSpeed="13.89" color="0,1,1"/>
+    <vType id="bus" accel="1.5" decel="3.5" sigma="0.5" length="12" maxSpeed="11" color="1,1,0"/>
+    <vType id="truck" accel="1.3" decel="3.0" sigma="0.5" length="10" maxSpeed="10" color="1,0.5,0"/>
+    <vType id="motorcycle" accel="3.5" decel="5.0" sigma="0.5" length="2" maxSpeed="15" color="1,0,1"/>
+    
+    <!-- Routes (all 12 possible turning movements) -->
+    <route id="north_to_south" edges="north_in south_out"/>
+    <route id="north_to_east" edges="north_in east_out"/>
+    <route id="north_to_west" edges="north_in west_out"/>
+    
+    <route id="south_to_north" edges="south_in north_out"/>
+    <route id="south_to_east" edges="south_in east_out"/>
+    <route id="south_to_west" edges="south_in west_out"/>
+    
+    <route id="east_to_west" edges="east_in west_out"/>
+    <route id="east_to_north" edges="east_in north_out"/>
+    <route id="east_to_south" edges="east_in south_out"/>
+    
+    <route id="west_to_east" edges="west_in east_out"/>
+    <route id="west_to_north" edges="west_in north_out"/>
+    <route id="west_to_south" edges="west_in south_out"/>
+    
+    <!-- Traffic flows (vehicles per hour) -->
+    <!-- Heavy north-south traffic -->
+    <flow id="flow_NS" route="north_to_south" type="car" begin="0" end="3600" vehsPerHour="600"/>
+    <flow id="flow_SN" route="south_to_north" type="car" begin="0" end="3600" vehsPerHour="600"/>
+    
+    <!-- Medium east-west traffic -->
+    <flow id="flow_EW" route="east_to_west" type="car" begin="0" end="3600" vehsPerHour="400"/>
+    <flow id="flow_WE" route="west_to_east" type="car" begin="0" end="3600" vehsPerHour="400"/>
+    
+    <!-- Some turning vehicles -->
+    <flow id="flow_NE" route="north_to_east" type="car" begin="0" end="3600" vehsPerHour="100"/>
+    <flow id="flow_SW" route="south_to_west" type="car" begin="0" end="3600" vehsPerHour="100"/>
+    <flow id="flow_EN" route="east_to_north" type="car" begin="0" end="3600" vehsPerHour="100"/>
+    <flow id="flow_WS" route="west_to_south" type="car" begin="0" end="3600" vehsPerHour="100"/>
+    
+    <!-- Some buses and trucks -->
+    <flow id="flow_bus_NS" route="north_to_south" type="bus" begin="0" end="3600" vehsPerHour="30"/>
+    <flow id="flow_truck_EW" route="east_to_west" type="truck" begin="0" end="3600" vehsPerHour="20"/>
+    <flow id="flow_bike_SN" route="south_to_north" type="motorcycle" begin="0" end="3600" vehsPerHour="80"/>
+</routes>

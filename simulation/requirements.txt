@@ -1,0 +1,5 @@
+traci==1.19.0
+sumolib==1.19.0
+requests==2.31.0
+matplotlib>=3.9.0
+numpy>=2.0.0
