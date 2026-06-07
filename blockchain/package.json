@@ -1,0 +1,14 @@
+{
+  "name": "smartroute-blockchain",
+  "version": "1.0.0",
+  "description": "SmartRoute audit ledger — tamper-evident signal change logging",
+  "type": "module",
+  "main": "bridge.js",
+  "scripts": {
+    "start": "node bridge.js",
+    "dev":   "node --watch bridge.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
