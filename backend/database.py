@@ -13,7 +13,10 @@ import os
 from datetime import datetime
 from typing import Any
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "smartroute.db")
+DB_PATH = os.environ.get(
+    "SMARTROUTE_DB",
+    os.path.join(os.path.dirname(__file__), "smartroute.db")
+)
 HISTORY_LIMIT = 500  # max rows per intersection kept in DB
 
 

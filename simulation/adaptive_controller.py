@@ -7,6 +7,7 @@ import os
 import sys
 import traci
 import time
+# pyrefly: ignore [untyped-import]
 import requests
 from collections import defaultdict
 
@@ -225,6 +226,37 @@ class AdaptiveSignalController:
         }
 
 
+# ── Emergency phase mapping ───────────────────────────────────────
+EMERGENCY_PHASE_MAP = {
+    "NS_GREEN": 0,   # SUMO phase 0 = NS green
+    "EW_GREEN": 2,   # SUMO phase 2 = EW green
+}
+
+
+def check_emergency_override() -> int | None:
+    """
+    Poll the backend for an active emergency override.
+    Returns the SUMO phase number (0 or 2) if emergency is active,
+    or None if normal adaptive control should be used.
+    """
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/emergency/{INTERSECTION_ID}",
+            timeout=0.5
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("active"):
+                phase_name = data.get("phase", "")
+                sumo_phase = EMERGENCY_PHASE_MAP.get(phase_name)
+                if sumo_phase is not None:
+                    print(f"🚨 EMERGENCY OVERRIDE → Phase {sumo_phase} ({phase_name})")
+                    return sumo_phase
+    except Exception:
+        pass
+    return None
+
+
 def run_simulation():
     """Main simulation loop"""
     # Start SUMO with TraCI
@@ -250,6 +282,19 @@ def run_simulation():
             # Get vehicle counts
             counts = controller.get_vehicle_counts()
             
+            # ── Emergency override check (every 2 seconds) ────────
+            # pyrefly: ignore [unsupported-operation]
+            if current_time - last_backend_send >= 2:
+                emergency_phase = check_emergency_override()
+                if emergency_phase is not None:
+                    # Force the emergency green phase
+                    controller.apply_phase(emergency_phase)
+                    controller.send_to_backend(counts, emergency_phase, 0)
+                    last_backend_send = current_time
+                    step += 1
+                    continue  # skip normal adaptive logic this step
+
+            # ── Normal adaptive phase decision ────────────────────
             # Decide signal phase
             new_phase = controller.decide_phase(counts, current_time)
             controller.apply_phase(new_phase)

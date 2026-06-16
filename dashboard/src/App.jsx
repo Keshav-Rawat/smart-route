@@ -6,8 +6,6 @@ import {
 import { Activity, Wifi, WifiOff, RefreshCw, Zap, TrendingDown, TrendingUp, Clock } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const INTERSECTION_ID = 'intersection_1';
-
 /* ── Simulation results from the last Python run ─────────────── */
 const SIM_RESULTS = {
   fixed:    { avg_queue: 35.69, max_queue: 69,  throughput: 2401 },
@@ -233,19 +231,36 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [isOnline, setIsOnline] = useState(false);
   const [tick, setTick]       = useState(0);
+  const [intersections, setIntersections] = useState(['intersection_1']);
+  const [selectedIntersection, setSelectedIntersection] = useState('intersection_1');
+  const [emergency, setEmergency] = useState({ active: false });
+  const [emergencyCountdown, setEmergencyCountdown] = useState(0);
+  const emergencyTimerRef = useRef(null);
 
   /* Live fetch */
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [r1, r2] = await Promise.all([
-          fetch(`${API_URL}/traffic/${INTERSECTION_ID}`),
-          fetch(`${API_URL}/traffic/${INTERSECTION_ID}/history`),
+        const [r1, r2, r3] = await Promise.all([
+          fetch(`${API_URL}/traffic/${selectedIntersection}`),
+          fetch(`${API_URL}/traffic/${selectedIntersection}/history`),
+          fetch(`${API_URL}/intersections`)
         ]);
-        const d1 = await r1.json();
-        const d2 = await r2.json();
-        setData(d1);
-        setHistory(d2.history || []);
+        if (r1.ok) setData(await r1.json());
+        if (r2.ok) {
+          const d2 = await r2.json();
+          setHistory(d2.history || []);
+        }
+        if (r3.ok) {
+          const d3 = await r3.json();
+          if (d3.intersections && d3.intersections.length > 0) {
+            // Backend returns array of objects {intersection_id, ...} — extract just the IDs
+            const ids = d3.intersections.map(i =>
+              typeof i === 'string' ? i : i.intersection_id
+            ).filter(Boolean);
+            setIntersections(ids);
+          }
+        }
         setIsOnline(true);
       } catch {
         setIsOnline(false);
@@ -254,11 +269,54 @@ export default function App() {
     fetchData();
     const iv = setInterval(() => { fetchData(); setTick(t => t + 1); }, 2000);
     return () => clearInterval(iv);
-  }, []);
+  }, [selectedIntersection]);
 
   /* Derived */
   const vehicleCount = data?.vehicle_count ?? 0;
-  const signalState  = data?.signal_state  ?? 'GREEN';
+  const signalState  = (emergency.active ? emergency.phase : data?.signal_state) ?? 'GREEN';
+
+  /* Sync emergency state from backend data */
+  useEffect(() => {
+    const em = data?.emergency;
+    if (em?.active) {
+      setEmergency(em);
+      const remaining = Math.max(0, Math.round(
+        (new Date(em.expires_at) - new Date()) / 1000
+      ));
+      setEmergencyCountdown(remaining);
+      clearInterval(emergencyTimerRef.current);
+      emergencyTimerRef.current = setInterval(() => {
+        setEmergencyCountdown(c => {
+          if (c <= 1) { clearInterval(emergencyTimerRef.current); setEmergency({ active: false }); return 0; }
+          return c - 1;
+        });
+      }, 1000);
+    } else if (!em?.active && emergency.active) {
+      setEmergency({ active: false });
+      setEmergencyCountdown(0);
+      clearInterval(emergencyTimerRef.current);
+    }
+  }, [data]);
+
+  const triggerEmergency = async (lane) => {
+    try {
+      const r = await fetch(`${API_URL}/emergency/${selectedIntersection}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lane, duration: 30 }),
+      });
+      if (r.ok) setEmergency(await r.json());
+    } catch {}
+  };
+
+  const clearEmergency = async () => {
+    try {
+      await fetch(`${API_URL}/emergency/${selectedIntersection}`, { method: 'DELETE' });
+      setEmergency({ active: false });
+      setEmergencyCountdown(0);
+      clearInterval(emergencyTimerRef.current);
+    } catch {}
+  };
   const lanes = data?.lanes
     ? Object.entries(data.lanes).map(([name, info]) => ({
         name: name.toUpperCase(), current: info.current || 0,
@@ -308,6 +366,30 @@ export default function App() {
               </h1>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>ADAPTIVE TRAFFIC CONTROL</p>
             </div>
+            
+            {/* Intersection Selector */}
+            <select 
+              value={selectedIntersection} 
+              onChange={e => setSelectedIntersection(e.target.value)}
+              style={{
+                marginLeft: 24,
+                padding: '6px 12px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#fff',
+                borderRadius: 6,
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12
+              }}
+            >
+              {intersections.map(id => (
+                <option key={id} value={id} style={{ background: '#0f172a' }}>
+                  {id === 'intersection_1' ? 'Simulation (intersection_1)' : id === 'intersection_2' ? 'Live Video (intersection_2)' : id}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
@@ -397,6 +479,74 @@ export default function App() {
             <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
               Webster algorithm<br/>adjusts phase duration
             </div>
+          </div>
+        </div>
+
+        {/* ── Emergency Vehicle Priority ─────────────────────── */}
+        <div className="card" style={{
+          padding: '20px 24px',
+          border: emergency.active ? '1px solid rgba(239,68,68,0.5)' : '1px solid var(--border)',
+          background: emergency.active ? 'rgba(239,68,68,0.06)' : 'var(--bg-card)',
+          transition: 'all 0.3s ease',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: emergency.active ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18,
+              animation: emergency.active ? 'emergencyPulse 1s infinite' : 'none',
+            }}>🚨</div>
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: emergency.active ? '#ef4444' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Emergency Vehicle Priority
+              </h3>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {emergency.active
+                  ? `🔴 ACTIVE — ${emergency.phase} forced for ${emergencyCountdown}s`
+                  : 'Select a lane to force green wave for emergency vehicles'}
+              </p>
+            </div>
+            {emergency.active && (
+              <button onClick={clearEmergency} style={{
+                marginLeft: 'auto', padding: '6px 14px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.4)',
+                background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+              }}>✕ Clear</button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {[
+              { label: '↑ NORTH', lane: 'north', phase: 'NS_GREEN' },
+              { label: '↓ SOUTH', lane: 'south', phase: 'NS_GREEN' },
+              { label: '→ EAST',  lane: 'east',  phase: 'EW_GREEN' },
+              { label: '← WEST',  lane: 'west',  phase: 'EW_GREEN' },
+            ].map(({ label, lane, phase }) => {
+              const isActive = emergency.active && emergency.lane === lane;
+              return (
+                <button
+                  key={lane}
+                  onClick={() => triggerEmergency(lane)}
+                  disabled={emergency.active && !isActive}
+                  style={{
+                    flex: '1 1 120px',
+                    padding: '14px 10px',
+                    borderRadius: 10,
+                    border: isActive ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                    background: isActive ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.04)',
+                    color: isActive ? '#ef4444' : emergency.active ? '#64748b' : '#f1f5f9',
+                    cursor: emergency.active && !isActive ? 'not-allowed' : 'pointer',
+                    fontWeight: 700, fontSize: 13, letterSpacing: '0.04em',
+                    transition: 'all 0.2s',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>🚑</span>
+                  {label}
+                  <span style={{ fontSize: 10, opacity: 0.6 }}>{phase}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -493,6 +643,10 @@ export default function App() {
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50%       { opacity: 0.5; transform: scale(0.8); }
+        }
+        @keyframes emergencyPulse {
+          0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+          50%       { opacity: 0.8; transform: scale(1.1); box-shadow: 0 0 0 8px rgba(239,68,68,0); }
         }
         @media (max-width: 1024px) {
           main { padding: 20px 16px; }
